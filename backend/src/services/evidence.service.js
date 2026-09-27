@@ -74,11 +74,12 @@ export const uploadEvidence = async (caseId, fileData, body, user) => {
     const newEvidence = await evidenceRepository.create(evidenceData);
 
     // 7. Auto-create CaseProgress entry
+    // Only PUBLIC evidence URLs go on the timeline, which NGO/VICTIM can read
     const progressEntry = await caseProgressRepository.create({
         caseId,
         statusSnapshot: caseDoc.status,
         message: `Evidence uploaded: ${fileData.originalname}`,
-        files: [fileData.path],
+        files: evidenceData.accessLevel === 'PUBLIC' ? [fileData.path] : [],
         updatedBy: userId,
     });
 

@@ -1,6 +1,7 @@
 import * as caseProgressRepository from '../repository/caseProgress.repository.js';
 import * as caseRepository from '../repository/case.repository.js';
 import * as userRepository from '../repository/user.repository.js';
+import * as evidenceRepository from '../repository/evidence.repository.js';
 import { sendVictimProgressUpdateEmail } from './email.service.js';
 
 /**
@@ -75,10 +76,12 @@ export const createProgressEntry = async ({ caseId, statusSnapshot, message, fil
 
 /**
  * Get progress timeline for a case
+ * - NGO / VICTIM never receive file URLs of non-PUBLIC evidence
  * @param {string} caseId - Case ID
+ * @param {string} userRole - Role of the requesting user
  * @returns {Promise<Array>} List of progress entries (newest first)
  */
-export const getCaseProgress = async (caseId) => {
+export const getCaseProgress = async (caseId, userRole) => {
     const caseDoc = await caseRepository.findById(caseId, { activeOnly: true });
     if (!caseDoc) {
         const error = new Error('Case not found');
@@ -86,7 +89,16 @@ export const getCaseProgress = async (caseId) => {
         throw error;
     }
 
-    return await caseProgressRepository.findByCaseId(caseId);
+    const entries = await caseProgressRepository.findByCaseId(caseId);
+
+    if (userRole === 'NGO' || userRole === 'VICTIM') {
+        const restrictedUrls = new Set(await evidenceRepository.findRestrictedFileUrls(caseId));
+        for (const entry of entries) {
+            entry.files = (entry.files || []).filter((url) => !restrictedUrls.has(url));
+        }
+    }
+
+    return entries;
 };
 
 /**

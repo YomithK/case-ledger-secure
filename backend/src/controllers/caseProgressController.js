@@ -63,7 +63,7 @@ export const getCaseProgress = asyncHandler(async (req, res) => {
     await caseService.getCaseById(caseId, userId, role);
 
     // 2. Fetch Progress Timeline
-    const progressDocs = await caseProgressService.getCaseProgress(caseId);
+    const progressDocs = await caseProgressService.getCaseProgress(caseId, role);
 
     sendSuccess(res, 200, 'Case progress timeline retrieved successfully', { progress: progressDocs });
 });

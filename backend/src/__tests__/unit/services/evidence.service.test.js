@@ -91,6 +91,34 @@ describe('evidence service', () => {
             expect(result).toBeDefined();
             expect(evidenceRepository.create).toHaveBeenCalledTimes(1);
         });
+
+        it('should not put a non-PUBLIC evidence URL on the progress timeline', async () => {
+            caseRepository.findById.mockResolvedValue(mockCase);
+            evidenceRepository.create.mockResolvedValue({ _id: evidenceId });
+            caseProgressRepository.create.mockResolvedValue({ _id: progressId });
+            evidenceRepository.updateById.mockResolvedValue({});
+            evidenceRepository.findById.mockResolvedValue(mockEvidence);
+
+            await evidenceService.uploadEvidence(
+                caseId, mockFile, { accessLevel: 'CONFIDENTIAL' },
+                { userId: investigatorId, role: 'INVESTIGATOR' }
+            );
+            expect(caseProgressRepository.create.mock.calls[0][0].files).toEqual([]);
+        });
+
+        it('should put a PUBLIC evidence URL on the progress timeline', async () => {
+            caseRepository.findById.mockResolvedValue(mockCase);
+            evidenceRepository.create.mockResolvedValue({ _id: evidenceId });
+            caseProgressRepository.create.mockResolvedValue({ _id: progressId });
+            evidenceRepository.updateById.mockResolvedValue({});
+            evidenceRepository.findById.mockResolvedValue(mockEvidence);
+
+            await evidenceService.uploadEvidence(
+                caseId, mockFile, { accessLevel: 'PUBLIC' },
+                { userId: investigatorId, role: 'INVESTIGATOR' }
+            );
+            expect(caseProgressRepository.create.mock.calls[0][0].files).toEqual([mockFile.path]);
+        });
     });
 
     describe('getEvidenceById', () => {

@@ -6,6 +6,7 @@ import {
     createInvestigatorUser,
     createCase,
     createProgressEntry,
+    createEvidence,
     authHeader,
 } from '../helpers/testHelpers.js';
 
@@ -113,6 +114,23 @@ describe('Case Progress Routes - Integration', () => {
                 .set(authHeader(investigator._id, 'INVESTIGATOR', investigator.email));
 
             expect(res.status).toBe(200);
+        });
+
+        it('should not expose confidential evidence URLs to the reporting NGO', async () => {
+            const confidentialUrl = 'https://res.cloudinary.com/test/image/upload/confidential.jpg';
+            const publicUrl = 'https://res.cloudinary.com/test/image/upload/public.jpg';
+            await createEvidence(caseDoc._id, investigator._id, { fileUrl: confidentialUrl, accessLevel: 'CONFIDENTIAL' });
+            await createEvidence(caseDoc._id, investigator._id, { fileUrl: publicUrl, accessLevel: 'PUBLIC' });
+            await createProgressEntry(caseDoc._id, investigator._id, { files: [confidentialUrl, publicUrl] });
+
+            const res = await request(app)
+                .get(`/api/v1/cases/${caseDoc._id}/progress`)
+                .set(authHeader(ngoUser._id, 'NGO', ngoUser.email));
+
+            expect(res.status).toBe(200);
+            const files = res.body.data.progress.flatMap((p) => p.files);
+            expect(files).not.toContain(confidentialUrl);
+            expect(files).toContain(publicUrl);
         });
 
         it('should return 401 without token', async () => {

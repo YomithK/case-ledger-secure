@@ -62,6 +62,15 @@ export const findByCaseId = async (caseId, filters = {}, pagination = {}) => {
 };
 
 /**
+ * Get file URLs of all non-PUBLIC evidence for a case (including archived)
+ * @param {string} caseId
+ * @returns {Promise<Array<string>>}
+ */
+export const findRestrictedFileUrls = async (caseId) => {
+    return await Evidence.distinct('fileUrl', { caseId, accessLevel: { $ne: 'PUBLIC' } });
+};
+
+/**
  * Count evidence documents for a case
  * @param {string} caseId
  * @param {Object} filters

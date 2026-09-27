@@ -1,9 +1,11 @@
 jest.mock('../../../repository/caseProgress.repository.js');
 jest.mock('../../../repository/case.repository.js');
+jest.mock('../../../repository/evidence.repository.js');
 
 import * as caseProgressService from '../../../services/caseProgressService.js';
 import * as caseProgressRepository from '../../../repository/caseProgress.repository.js';
 import * as caseRepository from '../../../repository/case.repository.js';
+import * as evidenceRepository from '../../../repository/evidence.repository.js';
 import mongoose from 'mongoose';
 
 const caseId = new mongoose.Types.ObjectId();
@@ -88,6 +90,28 @@ describe('caseProgress service', () => {
 
             const result = await caseProgressService.getCaseProgress(caseId);
             expect(result).toHaveLength(1);
+        });
+
+        it('should strip restricted evidence URLs for NGO users', async () => {
+            caseRepository.findById.mockResolvedValue(mockActiveCase);
+            caseProgressRepository.findByCaseId.mockResolvedValue([
+                { ...mockEntry, files: ['https://cdn/confidential.jpg', 'https://cdn/public.jpg'] },
+            ]);
+            evidenceRepository.findRestrictedFileUrls.mockResolvedValue(['https://cdn/confidential.jpg']);
+
+            const result = await caseProgressService.getCaseProgress(caseId, 'NGO');
+            expect(result[0].files).toEqual(['https://cdn/public.jpg']);
+        });
+
+        it('should not strip evidence URLs for ADMIN', async () => {
+            caseRepository.findById.mockResolvedValue(mockActiveCase);
+            caseProgressRepository.findByCaseId.mockResolvedValue([
+                { ...mockEntry, files: ['https://cdn/confidential.jpg'] },
+            ]);
+
+            const result = await caseProgressService.getCaseProgress(caseId, 'ADMIN');
+            expect(result[0].files).toEqual(['https://cdn/confidential.jpg']);
+            expect(evidenceRepository.findRestrictedFileUrls).not.toHaveBeenCalled();
         });
     });
 
