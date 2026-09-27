@@ -74,11 +74,12 @@ export const uploadEvidence = async (caseId, fileData, body, user) => {
     const newEvidence = await evidenceRepository.create(evidenceData);
 
     // 7. Auto-create CaseProgress entry
+    // Only PUBLIC evidence URLs go on the timeline, which NGO/VICTIM can read
     const progressEntry = await caseProgressRepository.create({
         caseId,
         statusSnapshot: caseDoc.status,
         message: `Evidence uploaded: ${fileData.originalname}`,
-        files: [fileData.path],
+        files: evidenceData.accessLevel === 'PUBLIC' ? [fileData.path] : [],
         updatedBy: userId,
     });
 
@@ -205,6 +206,15 @@ export const getEvidenceById = async (evidenceId, user) => {
         }
         if (evidence.accessLevel !== 'PUBLIC') {
             const err = new Error('Access forbidden. This evidence is restricted.');
+            err.statusCode = 403;
+            throw err;
+        }
+    }
+
+    if (role === 'INVESTIGATOR') {
+        const caseDoc = await caseRepository.findById(caseId);
+        if (!caseDoc || caseDoc.assignedInvestigator?.toString() !== userId.toString()) {
+            const err = new Error('Access forbidden. You are not assigned to this case.');
             err.statusCode = 403;
             throw err;
         }

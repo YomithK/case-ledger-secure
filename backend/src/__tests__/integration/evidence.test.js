@@ -142,6 +142,30 @@ describe('Evidence Routes - Integration', () => {
             expect(res.status).toBe(200);
         });
 
+        it('should return 200 for the assigned INVESTIGATOR', async () => {
+            const ev = await createEvidence(caseDoc._id, investigator._id, { accessLevel: 'CONFIDENTIAL' });
+            const res = await request(app)
+                .get(`/api/v1/evidence/${ev._id}`)
+                .set(authHeader(investigator._id, 'INVESTIGATOR', investigator.email));
+
+            expect(res.status).toBe(200);
+        });
+
+        it('should return 403 for an unassigned INVESTIGATOR reading confidential evidence', async () => {
+            const ev = await createEvidence(caseDoc._id, investigator._id, { accessLevel: 'CONFIDENTIAL' });
+            const otherInvestigator = await createInvestigatorUser({
+                email: `other_inv_${Date.now()}@test.com`,
+                nic: `${String(Date.now()).slice(-9)}X`,
+            });
+
+            const res = await request(app)
+                .get(`/api/v1/evidence/${ev._id}`)
+                .set(authHeader(otherInvestigator._id, 'INVESTIGATOR', otherInvestigator.email));
+
+            expect(res.status).toBe(403);
+            expect(res.body.data).toBeUndefined();
+        });
+
         it('should return 404 for non-existent evidence', async () => {
             const fakeId = '507f1f77bcf86cd799439011';
             const res = await request(app)
