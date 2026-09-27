@@ -105,6 +105,21 @@ describe('evidence service', () => {
             const result = await evidenceService.getEvidenceById(evidenceId, { userId: adminId, role: 'ADMIN' });
             expect(result).toBeDefined();
         });
+
+        it('should return evidence for the assigned INVESTIGATOR', async () => {
+            evidenceRepository.findById.mockResolvedValue(mockEvidence);
+            caseRepository.findById.mockResolvedValue(mockCase);
+            const result = await evidenceService.getEvidenceById(evidenceId, { userId: investigatorId, role: 'INVESTIGATOR' });
+            expect(result).toBeDefined();
+        });
+
+        it('should throw 403 for an unassigned INVESTIGATOR', async () => {
+            const otherInvestigatorId = new mongoose.Types.ObjectId();
+            evidenceRepository.findById.mockResolvedValue({ ...mockEvidence, accessLevel: 'CONFIDENTIAL' });
+            caseRepository.findById.mockResolvedValue(mockCase);
+            await expect(evidenceService.getEvidenceById(evidenceId, { userId: otherInvestigatorId, role: 'INVESTIGATOR' }))
+                .rejects.toMatchObject({ statusCode: 403 });
+        });
     });
 
     describe('updateEvidence', () => {

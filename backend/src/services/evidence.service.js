@@ -210,6 +210,15 @@ export const getEvidenceById = async (evidenceId, user) => {
         }
     }
 
+    if (role === 'INVESTIGATOR') {
+        const caseDoc = await caseRepository.findById(caseId);
+        if (!caseDoc || caseDoc.assignedInvestigator?.toString() !== userId.toString()) {
+            const err = new Error('Access forbidden. You are not assigned to this case.');
+            err.statusCode = 403;
+            throw err;
+        }
+    }
+
     return evidence;
 };
 
