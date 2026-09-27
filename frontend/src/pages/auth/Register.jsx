@@ -55,8 +55,11 @@ export default function Register() {
       setError('Name, email, password, and role are required.')
       return
     }
-    if (form.password.length < 6) {
-      setError('Password must be at least 6 characters.')
+    if (
+      form.password.length < 10 ||
+      !/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).+$/.test(form.password)
+    ) {
+      setError('Password must be at least 10 characters and include uppercase, lowercase, number and special character.')
       return
     }
     if (form.role === ROLES.NGO && !form.organizationName) {

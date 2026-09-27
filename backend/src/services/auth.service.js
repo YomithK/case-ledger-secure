@@ -69,9 +69,9 @@ export const login = async (email, password) => {
         throw error;
     }
 
-    // Check if user is active
+    // Check if user is active (generic message to avoid account enumeration)
     if (!user.isActive) {
-        const error = new Error('Account is deactivated');
+        const error = new Error('Invalid email or password');
         error.statusCode = 401;
         throw error;
     }

@@ -92,12 +92,12 @@ describe('auth service', () => {
             ).rejects.toMatchObject({ statusCode: 401 });
         });
 
-        it('should throw 401 when account is deactivated', async () => {
+        it('should throw generic 401 when account is deactivated', async () => {
             userRepository.findByEmail.mockResolvedValue({ ...mockUser, isActive: false, password: '$2b$10$abc' });
 
             await expect(
                 authService.login('test@example.com', 'password')
-            ).rejects.toMatchObject({ statusCode: 401, message: 'Account is deactivated' });
+            ).rejects.toMatchObject({ statusCode: 401, message: 'Invalid email or password' });
         });
 
         it('should throw 401 for an invalid password', async () => {
