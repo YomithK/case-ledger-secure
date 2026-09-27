@@ -1,10 +1,12 @@
 import request from 'supertest';
 import app from '../../app.js';
+import User from '../../models/User.js';
+import { resetAuthRateLimits } from '../../middleware/rateLimit.middleware.js';
 
 const NGO_USER = {
     name: 'Integration NGO',
     email: 'integration_ngo@test.com',
-    password: 'NGO@123456',
+    password: 'Ngo@123456',
     role: 'NGO',
     organizationName: 'Test NGO Org',
 };
@@ -19,6 +21,10 @@ const INVESTIGATOR_USER = {
 };
 
 describe('Auth Routes - Integration', () => {
+    beforeEach(() => {
+        resetAuthRateLimits();
+    });
+
     describe('POST /api/v1/auth/register', () => {
         it('should register an NGO user and return 201 with token', async () => {
             const res = await request(app)
@@ -31,13 +37,20 @@ describe('Auth Routes - Integration', () => {
             expect(res.body.data.user.role).toBe('NGO');
         });
 
-        it('should register an INVESTIGATOR user and return 201', async () => {
+        it('should return 400 when self-registering as INVESTIGATOR', async () => {
             const res = await request(app)
                 .post('/api/v1/auth/register')
                 .send(INVESTIGATOR_USER);
 
-            expect(res.status).toBe(201);
-            expect(res.body.data.user.role).toBe('INVESTIGATOR');
+            expect(res.status).toBe(400);
+        });
+
+        it('should return 400 when self-registering as ADMIN', async () => {
+            const res = await request(app)
+                .post('/api/v1/auth/register')
+                .send({ name: 'Attacker', email: 'attacker@test.com', password: 'Attack@12345', role: 'ADMIN' });
+
+            expect(res.status).toBe(400);
         });
 
         it('should return 400 when email is already registered', async () => {
@@ -62,7 +75,7 @@ describe('Auth Routes - Integration', () => {
         it('should return 400 when NGO user missing organizationName', async () => {
             const res = await request(app)
                 .post('/api/v1/auth/register')
-                .send({ name: 'NGO', email: 'ngo2@test.com', password: 'NGO@1234', role: 'NGO' });
+                .send({ name: 'NGO', email: 'ngo2@test.com', password: 'Ngo@123456', role: 'NGO' });
 
             expect(res.status).toBe(400);
         });
@@ -104,6 +117,50 @@ describe('Auth Routes - Integration', () => {
             const res = await request(app)
                 .post('/api/v1/auth/login')
                 .send({ email: 'not-an-email', password: 'somepass' });
+
+            expect(res.status).toBe(400);
+        });
+
+        it('should return the generic 401 message for a deactivated account', async () => {
+            await User.updateOne({ email: NGO_USER.email }, { isActive: false });
+
+            const res = await request(app)
+                .post('/api/v1/auth/login')
+                .send({ email: NGO_USER.email, password: NGO_USER.password });
+
+            expect(res.status).toBe(401);
+            expect(res.body.message).toBe('Invalid email or password');
+        });
+
+        it('should return 429 after repeated failed login attempts', async () => {
+            for (let i = 0; i < 10; i++) {
+                await request(app)
+                    .post('/api/v1/auth/login')
+                    .send({ email: NGO_USER.email, password: 'WrongPassword' });
+            }
+
+            const res = await request(app)
+                .post('/api/v1/auth/login')
+                .send({ email: NGO_USER.email, password: NGO_USER.password });
+
+            expect(res.status).toBe(429);
+            expect(res.headers).toHaveProperty('ratelimit-policy');
+        });
+    });
+
+    describe('password policy', () => {
+        it('should return 400 for a 6-character password', async () => {
+            const res = await request(app)
+                .post('/api/v1/auth/register')
+                .send({ ...NGO_USER, password: 'Ab@123' });
+
+            expect(res.status).toBe(400);
+        });
+
+        it('should return 400 for a long password without complexity', async () => {
+            const res = await request(app)
+                .post('/api/v1/auth/register')
+                .send({ ...NGO_USER, password: 'passwordpassword' });
 
             expect(res.status).toBe(400);
         });

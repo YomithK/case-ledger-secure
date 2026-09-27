@@ -61,6 +61,15 @@ describe('auth service', () => {
             expect(result).toHaveProperty('user');
         });
 
+        it('should downgrade a client-supplied privileged role to NGO', async () => {
+            userRepository.findByEmail.mockResolvedValue(null);
+            userRepository.create.mockResolvedValue(mockUser);
+
+            await authService.register({ name: 'X', email: 'x@x.com', password: 'password123', role: 'ADMIN' });
+
+            expect(userRepository.create.mock.calls[0][0].role).toBe('NGO');
+        });
+
         it('should hash the password before storing', async () => {
             const plainPassword = 'myPlainPassword';
             userRepository.findByEmail.mockResolvedValue(null);
@@ -83,12 +92,12 @@ describe('auth service', () => {
             ).rejects.toMatchObject({ statusCode: 401 });
         });
 
-        it('should throw 401 when account is deactivated', async () => {
+        it('should throw generic 401 when account is deactivated', async () => {
             userRepository.findByEmail.mockResolvedValue({ ...mockUser, isActive: false, password: '$2b$10$abc' });
 
             await expect(
                 authService.login('test@example.com', 'password')
-            ).rejects.toMatchObject({ statusCode: 401, message: 'Account is deactivated' });
+            ).rejects.toMatchObject({ statusCode: 401, message: 'Invalid email or password' });
         });
 
         it('should throw 401 for an invalid password', async () => {

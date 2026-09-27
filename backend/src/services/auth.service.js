@@ -3,6 +3,9 @@ import * as userRepository from '../repository/user.repository.js';
 import { hashPassword, comparePassword } from '../utils/password.utils.js';
 import { jwt as jwtConfig } from '../config/index.js';
 
+// Roles a user may choose for themselves at public registration
+const SELF_REGISTER_ROLES = ['NGO', 'VICTIM'];
+
 /**
  * Register a new user
  */
@@ -35,7 +38,8 @@ export const register = async (userData) => {
         name,
         email,
         password: hashedPassword,
-        role: role || 'NGO', // Default role
+        // Never trust a client-supplied privileged role; fall back to the safe default
+        role: SELF_REGISTER_ROLES.includes(role) ? role : 'NGO',
         phoneNumber,
         organizationName,
         nic,
@@ -65,9 +69,9 @@ export const login = async (email, password) => {
         throw error;
     }
 
-    // Check if user is active
+    // Check if user is active (generic message to avoid account enumeration)
     if (!user.isActive) {
-        const error = new Error('Account is deactivated');
+        const error = new Error('Invalid email or password');
         error.statusCode = 401;
         throw error;
     }

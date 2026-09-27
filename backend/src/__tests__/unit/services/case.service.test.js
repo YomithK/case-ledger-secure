@@ -153,13 +153,13 @@ describe('case service', () => {
 
     describe('assignInvestigator', () => {
         it('should throw 403 for INVESTIGATOR role', async () => {
-            await expect(caseService.assignInvestigator(caseId, investigatorId, 'INVESTIGATOR'))
+            await expect(caseService.assignInvestigator(caseId, investigatorId, investigatorId, 'INVESTIGATOR'))
                 .rejects.toMatchObject({ statusCode: 403 });
         });
 
         it('should throw 404 when case not found', async () => {
             caseRepository.findById.mockResolvedValue(null);
-            await expect(caseService.assignInvestigator(caseId, investigatorId, 'ADMIN'))
+            await expect(caseService.assignInvestigator(caseId, investigatorId, adminId, 'ADMIN'))
                 .rejects.toMatchObject({ statusCode: 404 });
         });
 
@@ -167,7 +167,7 @@ describe('case service', () => {
             caseRepository.findById.mockResolvedValue(mockCase);
             userRepository.findById.mockResolvedValue({ _id: ngoId, role: 'NGO' });
 
-            await expect(caseService.assignInvestigator(caseId, ngoId, 'ADMIN'))
+            await expect(caseService.assignInvestigator(caseId, ngoId, adminId, 'ADMIN'))
                 .rejects.toMatchObject({ statusCode: 400 });
         });
 
@@ -176,7 +176,25 @@ describe('case service', () => {
             userRepository.findById.mockResolvedValue(mockInvestigator);
             caseRepository.assignInvestigator.mockResolvedValue({ ...mockCase, assignedInvestigator: investigatorId });
 
-            const result = await caseService.assignInvestigator(caseId, investigatorId, 'ADMIN');
+            const result = await caseService.assignInvestigator(caseId, investigatorId, adminId, 'ADMIN');
+            expect(result).toBeDefined();
+        });
+
+        it('should throw 403 when NGO assigns on a case it did not report', async () => {
+            const otherNgoId = new mongoose.Types.ObjectId();
+            caseRepository.findById.mockResolvedValue(mockCase);
+
+            await expect(caseService.assignInvestigator(caseId, investigatorId, otherNgoId, 'NGO'))
+                .rejects.toMatchObject({ statusCode: 403 });
+            expect(caseRepository.assignInvestigator).not.toHaveBeenCalled();
+        });
+
+        it('should assign investigator for the NGO that reported the case', async () => {
+            caseRepository.findById.mockResolvedValue(mockCase);
+            userRepository.findById.mockResolvedValue(mockInvestigator);
+            caseRepository.assignInvestigator.mockResolvedValue({ ...mockCase, assignedInvestigator: investigatorId });
+
+            const result = await caseService.assignInvestigator(caseId, investigatorId, ngoId, 'NGO');
             expect(result).toBeDefined();
         });
     });

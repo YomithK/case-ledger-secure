@@ -4,6 +4,9 @@ import { celebrate, Joi, Segments } from 'celebrate';
 const NIC_OLD_FORMAT = /^[0-9]{9}[vVxX]$/;
 const NIC_NEW_FORMAT = /^[0-9]{12}$/;
 
+// Password must contain upper, lower, digit and special character
+const PASSWORD_COMPLEXITY = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).+$/;
+
 export const registerValidation = celebrate({
     [Segments.BODY]: Joi.object({
         name: Joi.string().required().trim().messages({
@@ -15,13 +18,18 @@ export const registerValidation = celebrate({
             'string.empty': 'Email is required',
             'any.required': 'Email is required',
         }),
-        password: Joi.string().min(6).required().messages({
-            'string.min': 'Password must be at least 6 characters long',
+        password: Joi.string().min(10).max(128).pattern(PASSWORD_COMPLEXITY).required().messages({
+            'string.min': 'Password must be at least 10 characters long',
+            'string.max': 'Password must be at most 128 characters long',
+            'string.pattern.base':
+                'Password must contain at least one uppercase letter, one lowercase letter, one number and one special character',
             'string.empty': 'Password is required',
             'any.required': 'Password is required',
         }),
-        role: Joi.string().valid('ADMIN', 'INVESTIGATOR', 'NGO', 'VICTIM').optional().messages({
-            'any.only': 'Role must be one of: ADMIN, INVESTIGATOR, NGO, VICTIM',
+        // Public self-registration is limited to non-privileged roles.
+        // ADMIN / INVESTIGATOR are granted only by an ADMIN via PUT /users/:id/role.
+        role: Joi.string().valid('NGO', 'VICTIM').optional().messages({
+            'any.only': 'Role must be one of: NGO, VICTIM',
         }),
         phoneNumber: Joi.string().pattern(/^[0-9]{10}$/).optional().messages({
             'string.pattern.base': 'Phone number must be a valid 10-digit number',
