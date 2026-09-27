@@ -61,6 +61,15 @@ describe('auth service', () => {
             expect(result).toHaveProperty('user');
         });
 
+        it('should downgrade a client-supplied privileged role to NGO', async () => {
+            userRepository.findByEmail.mockResolvedValue(null);
+            userRepository.create.mockResolvedValue(mockUser);
+
+            await authService.register({ name: 'X', email: 'x@x.com', password: 'password123', role: 'ADMIN' });
+
+            expect(userRepository.create.mock.calls[0][0].role).toBe('NGO');
+        });
+
         it('should hash the password before storing', async () => {
             const plainPassword = 'myPlainPassword';
             userRepository.findByEmail.mockResolvedValue(null);

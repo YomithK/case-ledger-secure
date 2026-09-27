@@ -20,8 +20,10 @@ export const registerValidation = celebrate({
             'string.empty': 'Password is required',
             'any.required': 'Password is required',
         }),
-        role: Joi.string().valid('ADMIN', 'INVESTIGATOR', 'NGO', 'VICTIM').optional().messages({
-            'any.only': 'Role must be one of: ADMIN, INVESTIGATOR, NGO, VICTIM',
+        // Public self-registration is limited to non-privileged roles.
+        // ADMIN / INVESTIGATOR are granted only by an ADMIN via PUT /users/:id/role.
+        role: Joi.string().valid('NGO', 'VICTIM').optional().messages({
+            'any.only': 'Role must be one of: NGO, VICTIM',
         }),
         phoneNumber: Joi.string().pattern(/^[0-9]{10}$/).optional().messages({
             'string.pattern.base': 'Phone number must be a valid 10-digit number',

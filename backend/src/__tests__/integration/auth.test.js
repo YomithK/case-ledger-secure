@@ -31,13 +31,20 @@ describe('Auth Routes - Integration', () => {
             expect(res.body.data.user.role).toBe('NGO');
         });
 
-        it('should register an INVESTIGATOR user and return 201', async () => {
+        it('should return 400 when self-registering as INVESTIGATOR', async () => {
             const res = await request(app)
                 .post('/api/v1/auth/register')
                 .send(INVESTIGATOR_USER);
 
-            expect(res.status).toBe(201);
-            expect(res.body.data.user.role).toBe('INVESTIGATOR');
+            expect(res.status).toBe(400);
+        });
+
+        it('should return 400 when self-registering as ADMIN', async () => {
+            const res = await request(app)
+                .post('/api/v1/auth/register')
+                .send({ name: 'Attacker', email: 'attacker@test.com', password: 'Attack@12345', role: 'ADMIN' });
+
+            expect(res.status).toBe(400);
         });
 
         it('should return 400 when email is already registered', async () => {

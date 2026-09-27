@@ -17,7 +17,6 @@ import { ROLES } from '@/utils/constants'
 
 const ROLE_OPTIONS = [
   { value: ROLES.NGO, label: 'NGO' },
-  { value: ROLES.INVESTIGATOR, label: 'Investigator' },
   { value: ROLES.VICTIM, label: 'Victim' },
 ]
 
