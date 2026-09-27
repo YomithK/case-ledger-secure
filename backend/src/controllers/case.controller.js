@@ -87,9 +87,9 @@ export const deleteCase = asyncHandler(async (req, res) => {
 export const assignInvestigator = asyncHandler(async (req, res) => {
     const { id } = req.params;
     const { investigatorId } = req.body;
-    const { role } = req.user;
+    const { userId, role } = req.user;
 
-    const updatedCase = await caseService.assignInvestigator(id, investigatorId, role);
+    const updatedCase = await caseService.assignInvestigator(id, investigatorId, userId, role);
 
     sendSuccess(res, 200, 'Investigator assigned successfully', { case: updatedCase });
 });

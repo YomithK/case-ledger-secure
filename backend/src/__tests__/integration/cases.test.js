@@ -183,6 +183,27 @@ describe('Case Routes - Integration', () => {
 
             expect(res.status).toBe(400);
         });
+
+        it('should return 403 when an NGO assigns on a case it did not report', async () => {
+            const otherNgo = await createNGOUser({ email: 'other_ngo@test.com' });
+            const caseDoc = await createCase(ngoUser._id);
+            const res = await request(app)
+                .put(`/api/v1/cases/${caseDoc._id}/assign`)
+                .set(authHeader(otherNgo._id, 'NGO', otherNgo.email))
+                .send({ investigatorId: investigator._id });
+
+            expect(res.status).toBe(403);
+        });
+
+        it('should return 200 when the reporting NGO assigns an investigator', async () => {
+            const caseDoc = await createCase(ngoUser._id);
+            const res = await request(app)
+                .put(`/api/v1/cases/${caseDoc._id}/assign`)
+                .set(authHeader(ngoUser._id, 'NGO', ngoUser.email))
+                .send({ investigatorId: investigator._id });
+
+            expect(res.status).toBe(200);
+        });
     });
 
     describe('PUT /api/v1/cases/:id/status', () => {
