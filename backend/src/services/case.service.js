@@ -21,7 +21,7 @@ const STATUS_TRANSITIONS = {
  * @param {string} newStatus - New status to transition to
  * @returns {boolean} True if transition is valid
  */
-const isValidStatusTransition = (currentStatus, newStatus) => {
+export const isValidStatusTransition = (currentStatus, newStatus) => {
     const allowedTransitions = STATUS_TRANSITIONS[currentStatus] || [];
     return allowedTransitions.includes(newStatus);
 };

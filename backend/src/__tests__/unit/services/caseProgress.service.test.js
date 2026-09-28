@@ -75,6 +75,30 @@ describe('caseProgress service', () => {
 
             expect(caseRepository.updateStatus).toHaveBeenCalledWith(caseId, 'EVIDENCE_COLLECTED');
         });
+
+        it('should throw 400 and not change status for an invalid lifecycle transition', async () => {
+            caseRepository.findById.mockResolvedValue({ ...mockActiveCase, status: 'REPORTED' });
+
+            await expect(caseProgressService.createProgressEntry({
+                caseId, message: 'Skip to closed', statusSnapshot: 'CLOSED', updatedBy: investigatorId,
+            })).rejects.toMatchObject({ statusCode: 400 });
+
+            expect(caseProgressRepository.create).not.toHaveBeenCalled();
+            expect(caseRepository.updateStatus).not.toHaveBeenCalled();
+        });
+
+        it('should not update case status when the snapshot equals the current status', async () => {
+            caseRepository.findById.mockResolvedValue(mockActiveCase);
+            const created = { _id: entryId, caseId, statusSnapshot: 'UNDER_INVESTIGATION' };
+            caseProgressRepository.create.mockResolvedValue(created);
+            caseProgressRepository.findById.mockResolvedValue(created);
+
+            await caseProgressService.createProgressEntry({
+                caseId, message: 'Note', statusSnapshot: 'UNDER_INVESTIGATION', updatedBy: investigatorId,
+            });
+
+            expect(caseRepository.updateStatus).not.toHaveBeenCalled();
+        });
     });
 
     describe('getCaseProgress', () => {

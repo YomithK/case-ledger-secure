@@ -3,6 +3,7 @@ import * as caseRepository from '../repository/case.repository.js';
 import * as userRepository from '../repository/user.repository.js';
 import * as evidenceRepository from '../repository/evidence.repository.js';
 import { sendVictimProgressUpdateEmail } from './email.service.js';
+import { isValidStatusTransition } from './case.service.js';
 
 /**
  * Create a new progress entry for a case
@@ -39,10 +40,21 @@ export const createProgressEntry = async ({ caseId, statusSnapshot, message, fil
         throw error;
     }
 
+    // A status change requested via progress must follow the same lifecycle
+    // state machine as PUT /cases/:id/status
+    const newStatus = statusSnapshot || caseDoc.status; // Use current case status if not provided
+    const statusChanged = newStatus !== caseDoc.status;
+
+    if (statusChanged && !isValidStatusTransition(caseDoc.status, newStatus)) {
+        const error = new Error(`Invalid status transition from ${caseDoc.status} to ${newStatus}`);
+        error.statusCode = 400;
+        throw error;
+    }
+
     // 2. Prepare data
     const progressData = {
         caseId,
-        statusSnapshot: statusSnapshot || caseDoc.status, // Use current case status if not provided
+        statusSnapshot: newStatus,
         message,
         files: files || [],
         updatedBy
@@ -51,8 +63,10 @@ export const createProgressEntry = async ({ caseId, statusSnapshot, message, fil
     // 3. Create Entry
     const newEntry = await caseProgressRepository.create(progressData);
 
-    // 4. Sync case status to the progress snapshot
-    await caseRepository.updateStatus(caseId, progressData.statusSnapshot);
+    // 4. Sync case status to the progress snapshot (only for a validated change)
+    if (statusChanged) {
+        await caseRepository.updateStatus(caseId, newStatus);
+    }
 
     // 5. Notify victim if assigned
     if (caseDoc.victim) {
