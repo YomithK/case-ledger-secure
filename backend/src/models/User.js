@@ -24,7 +24,13 @@ const userSchema = new mongoose.Schema(
         },
         password: {
             type: String,
-            required: [true, 'Password is required'],
+            // Only local accounts have a password; Google (OIDC) accounts do not
+            required: [
+                function () {
+                    return this.authProvider === 'LOCAL';
+                },
+                'Password is required',
+            ],
             minlength: [6, 'Password must be at least 6 characters long'],
             select: false, // Don't include password in queries by default
         },
@@ -113,6 +119,16 @@ const userSchema = new mongoose.Schema(
                     message: 'Date of birth must be in the past',
                 },
             ],
+        },
+        authProvider: {
+            type: String,
+            enum: ['LOCAL', 'GOOGLE'],
+            default: 'LOCAL',
+        },
+        googleId: {
+            type: String,
+            sparse: true,
+            index: true,
         },
         lastLoginAt: {
             type: Date,

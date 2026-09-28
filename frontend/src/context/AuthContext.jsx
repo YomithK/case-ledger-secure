@@ -30,6 +30,15 @@ export function AuthProvider({ children }) {
     return newUser
   }, [])
 
+  // Used by the Google (OIDC) callback, where the backend has already issued the JWT
+  const loginWithToken = useCallback((newToken, newUser) => {
+    localStorage.setItem(LOCAL_STORAGE_TOKEN_KEY, newToken)
+    localStorage.setItem(LOCAL_STORAGE_USER_KEY, JSON.stringify(newUser))
+    setToken(newToken)
+    setUser(newUser)
+    return newUser
+  }, [])
+
   const logout = useCallback(() => {
     localStorage.removeItem(LOCAL_STORAGE_TOKEN_KEY)
     localStorage.removeItem(LOCAL_STORAGE_USER_KEY)
@@ -51,6 +60,7 @@ export function AuthProvider({ children }) {
         role: user?.role || null,
         loading,
         login,
+        loginWithToken,
         logout,
         updateUserInContext,
       }}

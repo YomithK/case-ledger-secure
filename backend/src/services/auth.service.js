@@ -76,8 +76,8 @@ export const login = async (email, password) => {
         throw error;
     }
 
-    // Verify password
-    const isPasswordValid = await comparePassword(password, user.password);
+    // Verify password (Google-only accounts have none and cannot use password login)
+    const isPasswordValid = user.password ? await comparePassword(password, user.password) : false;
     if (!isPasswordValid) {
         const error = new Error('Invalid email or password');
         error.statusCode = 401;
@@ -98,10 +98,9 @@ export const login = async (email, password) => {
 };
 
 /**
- * Helper function to generate JWT token
- * @private
+ * Helper function to generate JWT token (also used by the Google OIDC login)
  */
-const generateToken = (user) => {
+export const generateToken = (user) => {
     return jwt.sign(
         {
             userId: user._id,

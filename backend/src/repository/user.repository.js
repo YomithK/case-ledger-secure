@@ -24,6 +24,15 @@ export const findByEmail = async (email, options = {}) => {
 };
 
 /**
+ * Find user by Google account subject (OIDC "sub")
+ * @param {string} googleId - Google subject identifier
+ * @returns {Promise<Object|null>} User document or null
+ */
+export const findByGoogleId = async (googleId) => {
+    return await User.findOne({ googleId: String(googleId) });
+};
+
+/**
  * Find user by NIC
  * @param {string} nic - National Identity Card number
  * @returns {Promise<Object|null>} User document or null

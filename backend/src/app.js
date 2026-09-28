@@ -1,6 +1,7 @@
 import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
+import cookieParser from 'cookie-parser';
 import routes from './routes/index.js';
 import { errorHandler, notFound } from './middleware/error.middleware.js';
 import { requestLogger } from './middleware/requestLogger.middleware.js';
@@ -30,6 +31,8 @@ app.use(
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+// Signed cookies hold the OAuth PKCE verifier + state between the two redirects
+app.use(cookieParser(process.env.JWT_SECRET));
 app.use(requestLogger);
 
 app.get('/health', (req, res) => {
