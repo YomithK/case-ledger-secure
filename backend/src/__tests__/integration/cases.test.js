@@ -80,6 +80,15 @@ describe('Case Routes - Integration', () => {
             expect(Array.isArray(res.body.data.cases)).toBe(true);
         });
 
+        it('should treat search=.* as a literal string (no regex enumeration)', async () => {
+            const res = await request(app)
+                .get('/api/v1/cases?search=.%2A')
+                .set(authHeader(admin._id, 'ADMIN', admin.email));
+
+            expect(res.status).toBe(200);
+            expect(res.body.data.cases).toHaveLength(0);
+        });
+
         it('should return only own cases for NGO', async () => {
             const anotherNgo = await createNGOUser({ email: `another_ngo_${Date.now()}@test.com` });
             await createCase(anotherNgo._id);

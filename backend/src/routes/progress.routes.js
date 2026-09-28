@@ -1,6 +1,7 @@
 import express from 'express';
 import * as caseProgressController from '../controllers/caseProgressController.js';
 import { authenticate, authorize } from '../middleware/auth.middleware.js';
+import { updateProgressValidation } from '../validations/progress.validation.js';
 
 const router = express.Router();
 
@@ -12,7 +13,7 @@ router.use(authenticate);
  * @desc    Update a progress entry
  * @access  Admin or Assigned Investigator within 15-minute window (enforced in service)
  */
-router.put('/:id', authorize('ADMIN', 'INVESTIGATOR'), caseProgressController.updateProgress);
+router.put('/:id', authorize('ADMIN', 'INVESTIGATOR'), updateProgressValidation, caseProgressController.updateProgress);
 
 /**
  * @route   DELETE /api/v1/progress/:id

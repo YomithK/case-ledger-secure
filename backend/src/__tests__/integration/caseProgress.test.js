@@ -1,5 +1,6 @@
 import request from 'supertest';
 import app from '../../app.js';
+import CaseProgress from '../../models/CaseProgress.js';
 import {
     createAdminUser,
     createNGOUser,
@@ -50,6 +51,26 @@ describe('Case Progress Routes - Integration', () => {
 
             expect(caseRes.status).toBe(200);
             expect(caseRes.body.data.case.status).toBe('EVIDENCE_COLLECTED');
+        });
+
+        it('should return 400 and keep status when statusSnapshot skips the lifecycle', async () => {
+            const reportedCase = await createCase(ngoUser._id, {
+                status: 'REPORTED',
+                assignedInvestigator: investigator._id,
+            });
+
+            const res = await request(app)
+                .post(`/api/v1/cases/${reportedCase._id}/progress`)
+                .set(authHeader(investigator._id, 'INVESTIGATOR', investigator.email))
+                .send({ message: 'Closing early', statusSnapshot: 'CLOSED' });
+
+            expect(res.status).toBe(400);
+
+            const caseRes = await request(app)
+                .get(`/api/v1/cases/${reportedCase._id}`)
+                .set(authHeader(admin._id, 'ADMIN', admin.email));
+
+            expect(caseRes.body.data.case.status).toBe('REPORTED');
         });
 
         it('should return 403 for ADMIN adding progress (INVESTIGATOR-only route)', async () => {
@@ -158,6 +179,30 @@ describe('Case Progress Routes - Integration', () => {
                 .send({ message: 'Updated within window' });
 
             expect(res.status).toBe(200);
+        });
+
+        it('should return 400 and not move the entry when body contains a $set operator', async () => {
+            const entry = await createProgressEntry(caseDoc._id, investigator._id);
+            const otherCase = await createCase(ngoUser._id);
+            const res = await request(app)
+                .put(`/api/v1/progress/${entry._id}`)
+                .set(authHeader(admin._id, 'ADMIN', admin.email))
+                .send({ message: 'x', $set: { caseId: otherCase._id } });
+
+            expect(res.status).toBe(400);
+
+            const stored = await CaseProgress.findById(entry._id);
+            expect(stored.caseId.toString()).toBe(caseDoc._id.toString());
+        });
+
+        it('should return 400 when body contains fields other than message', async () => {
+            const entry = await createProgressEntry(caseDoc._id, investigator._id);
+            const res = await request(app)
+                .put(`/api/v1/progress/${entry._id}`)
+                .set(authHeader(admin._id, 'ADMIN', admin.email))
+                .send({ message: 'x', statusSnapshot: 'CLOSED' });
+
+            expect(res.status).toBe(400);
         });
 
         it('should return 403 for NGO updating progress', async () => {
