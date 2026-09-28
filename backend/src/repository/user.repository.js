@@ -1,4 +1,5 @@
 import User from '../models/User.js';
+import { escapeRegex } from '../utils/regex.utils.js';
 
 /**
  * Find user by email
@@ -96,7 +97,7 @@ export const findAll = async (filters = {}, options = {}, pagination = {}) => {
     }
 
     if (filters.search) {
-        query.name = { $regex: filters.search, $options: 'i' };
+        query.name = { $regex: escapeRegex(filters.search), $options: 'i' };
     }
 
     const page = parseInt(pagination.page) || 1;
@@ -129,7 +130,7 @@ export const countUsers = async (filters = {}) => {
     }
 
     if (filters.search) {
-        query.name = { $regex: filters.search, $options: 'i' };
+        query.name = { $regex: escapeRegex(filters.search), $options: 'i' };
     }
 
     return await User.countDocuments(query);
@@ -145,7 +146,7 @@ export const findAssignableUsers = async (search, limit) => {
     const query = { role: 'INVESTIGATOR', isActive: true };
 
     if (search) {
-        query.name = { $regex: search, $options: 'i' };
+        query.name = { $regex: escapeRegex(search), $options: 'i' };
     }
 
     const cap = Math.min(parseInt(limit) || 10, 50);
@@ -241,8 +242,8 @@ export const findVictimUsers = async (search, limit) => {
 
     if (search) {
         query.$or = [
-            { name: { $regex: search, $options: 'i' } },
-            { email: { $regex: search, $options: 'i' } },
+            { name: { $regex: escapeRegex(search), $options: 'i' } },
+            { email: { $regex: escapeRegex(search), $options: 'i' } },
         ];
     }
 
