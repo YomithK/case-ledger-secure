@@ -4,6 +4,7 @@ import {
     createAdminUser,
     createNGOUser,
     createInvestigatorUser,
+    createCase,
     authHeader,
 } from '../helpers/testHelpers.js';
 
@@ -269,6 +270,20 @@ describe('Report Routes - Integration', () => {
                 .set(authHeader(ngoUser._id, 'NGO', ngoUser.email));
 
             expect(res.status).toBe(403);
+        });
+    });
+
+    describe('GET /api/v1/reports/cases/download', () => {
+        it('should export a formula-like case title as inert text', async () => {
+            await createCase(ngoUser._id, { title: '=HYPERLINK("http://example.com","x")' });
+
+            const res = await request(app)
+                .get('/api/v1/reports/cases/download')
+                .set(authHeader(admin._id, 'ADMIN', admin.email));
+
+            expect(res.status).toBe(200);
+            expect(res.text).toContain('"\'=HYPERLINK(""http://example.com"",""x"")"');
+            expect(res.text).not.toMatch(/(^|,)=HYPERLINK/m);
         });
     });
 });

@@ -38,6 +38,26 @@ const reportId = new mongoose.Types.ObjectId();
 describe('report service', () => {
     beforeEach(() => jest.clearAllMocks());
 
+    describe('escapeCsvField', () => {
+        it.each(['=HYPERLINK("http://evil","x")', '+1+1', '-2+3', '@SUM(A1)', '\tcmd', '\rcmd'])(
+            'should prefix a single quote to formula-like text %p',
+            (value) => {
+                expect(reportService.escapeCsvField(value).replace(/^"/, '')).toMatch(/^'/);
+            }
+        );
+
+        it('should export =HYPERLINK(...) as inert, quote-escaped text', () => {
+            expect(reportService.escapeCsvField('=HYPERLINK("http://evil","x")'))
+                .toBe('"\'=HYPERLINK(""http://evil"",""x"")"');
+        });
+
+        it('should leave ordinary text and numbers unchanged', () => {
+            expect(reportService.escapeCsvField('Normal title')).toBe('Normal title');
+            expect(reportService.escapeCsvField(-5)).toBe('-5');
+            expect(reportService.escapeCsvField(null)).toBe('');
+        });
+    });
+
     describe('getDashboardSummary', () => {
         it('should throw 403 for non-ADMIN', async () => {
             await expect(reportService.getDashboardSummary(ngoId, 'NGO'))
