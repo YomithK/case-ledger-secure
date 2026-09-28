@@ -9,6 +9,12 @@ export const jwt = {
   expiresIn: process.env.JWT_EXPIRES_IN ?? "1d",
 };
 
+export const google = {
+  clientId: process.env.GOOGLE_CLIENT_ID,
+  clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+  callbackUrl: process.env.GOOGLE_CALLBACK_URL,
+};
+
 export const server = {
   port: process.env.PORT ?? 8080,
   nodeEnv: process.env.NODE_ENV ?? "development",
