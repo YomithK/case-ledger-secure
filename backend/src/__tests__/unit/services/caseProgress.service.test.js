@@ -1,9 +1,11 @@
 jest.mock('../../../repository/caseProgress.repository.js');
 jest.mock('../../../repository/case.repository.js');
+jest.mock('../../../repository/evidence.repository.js');
 
 import * as caseProgressService from '../../../services/caseProgressService.js';
 import * as caseProgressRepository from '../../../repository/caseProgress.repository.js';
 import * as caseRepository from '../../../repository/case.repository.js';
+import * as evidenceRepository from '../../../repository/evidence.repository.js';
 import mongoose from 'mongoose';
 
 const caseId = new mongoose.Types.ObjectId();
@@ -73,6 +75,30 @@ describe('caseProgress service', () => {
 
             expect(caseRepository.updateStatus).toHaveBeenCalledWith(caseId, 'EVIDENCE_COLLECTED');
         });
+
+        it('should throw 400 and not change status for an invalid lifecycle transition', async () => {
+            caseRepository.findById.mockResolvedValue({ ...mockActiveCase, status: 'REPORTED' });
+
+            await expect(caseProgressService.createProgressEntry({
+                caseId, message: 'Skip to closed', statusSnapshot: 'CLOSED', updatedBy: investigatorId,
+            })).rejects.toMatchObject({ statusCode: 400 });
+
+            expect(caseProgressRepository.create).not.toHaveBeenCalled();
+            expect(caseRepository.updateStatus).not.toHaveBeenCalled();
+        });
+
+        it('should not update case status when the snapshot equals the current status', async () => {
+            caseRepository.findById.mockResolvedValue(mockActiveCase);
+            const created = { _id: entryId, caseId, statusSnapshot: 'UNDER_INVESTIGATION' };
+            caseProgressRepository.create.mockResolvedValue(created);
+            caseProgressRepository.findById.mockResolvedValue(created);
+
+            await caseProgressService.createProgressEntry({
+                caseId, message: 'Note', statusSnapshot: 'UNDER_INVESTIGATION', updatedBy: investigatorId,
+            });
+
+            expect(caseRepository.updateStatus).not.toHaveBeenCalled();
+        });
     });
 
     describe('getCaseProgress', () => {
@@ -88,6 +114,28 @@ describe('caseProgress service', () => {
 
             const result = await caseProgressService.getCaseProgress(caseId);
             expect(result).toHaveLength(1);
+        });
+
+        it('should strip restricted evidence URLs for NGO users', async () => {
+            caseRepository.findById.mockResolvedValue(mockActiveCase);
+            caseProgressRepository.findByCaseId.mockResolvedValue([
+                { ...mockEntry, files: ['https://cdn/confidential.jpg', 'https://cdn/public.jpg'] },
+            ]);
+            evidenceRepository.findRestrictedFileUrls.mockResolvedValue(['https://cdn/confidential.jpg']);
+
+            const result = await caseProgressService.getCaseProgress(caseId, 'NGO');
+            expect(result[0].files).toEqual(['https://cdn/public.jpg']);
+        });
+
+        it('should not strip evidence URLs for ADMIN', async () => {
+            caseRepository.findById.mockResolvedValue(mockActiveCase);
+            caseProgressRepository.findByCaseId.mockResolvedValue([
+                { ...mockEntry, files: ['https://cdn/confidential.jpg'] },
+            ]);
+
+            const result = await caseProgressService.getCaseProgress(caseId, 'ADMIN');
+            expect(result[0].files).toEqual(['https://cdn/confidential.jpg']);
+            expect(evidenceRepository.findRestrictedFileUrls).not.toHaveBeenCalled();
         });
     });
 
@@ -130,6 +178,21 @@ describe('caseProgress service', () => {
 
             const result = await caseProgressService.updateProgressEntry(entryId, { message: 'Updated' }, adminId, 'ADMIN');
             expect(result).toBeDefined();
+        });
+
+        it('should only pass the message field to the update (drops operators and extra fields)', async () => {
+            caseProgressRepository.findById.mockResolvedValue(mockEntry);
+            caseProgressRepository.updateById.mockResolvedValue(mockEntry);
+            const otherCaseId = new mongoose.Types.ObjectId();
+
+            await caseProgressService.updateProgressEntry(entryId, {
+                message: 'Updated',
+                $set: { caseId: otherCaseId },
+                statusSnapshot: 'CLOSED',
+                files: ['https://evil.example/x.jpg'],
+            }, adminId, 'ADMIN');
+
+            expect(caseProgressRepository.updateById).toHaveBeenCalledWith(entryId, { message: 'Updated' });
         });
     });
 

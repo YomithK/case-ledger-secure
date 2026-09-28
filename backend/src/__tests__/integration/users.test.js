@@ -1,11 +1,45 @@
 import request from 'supertest';
 import app from '../../app.js';
+import User from '../../models/User.js';
 import {
     createAdminUser,
     createNGOUser,
     createInvestigatorUser,
     authHeader,
 } from '../helpers/testHelpers.js';
+
+describe('Ref Routes - regex search (V7)', () => {
+    let admin;
+
+    beforeEach(async () => {
+        admin = await createAdminUser();
+        await User.create({
+            name: 'Victim One',
+            email: 'victim_one@test.com',
+            password: 'hashed',
+            role: 'VICTIM',
+            isActive: true,
+        });
+    });
+
+    it('should not enumerate victims with search=.*', async () => {
+        const res = await request(app)
+            .get('/api/v1/ref/victim-users?search=.%2A')
+            .set(authHeader(admin._id, 'ADMIN', admin.email));
+
+        expect(res.status).toBe(200);
+        expect(res.body.data.users).toHaveLength(0);
+    });
+
+    it('should still find victims by a literal substring', async () => {
+        const res = await request(app)
+            .get('/api/v1/ref/victim-users?search=victim%20one')
+            .set(authHeader(admin._id, 'ADMIN', admin.email));
+
+        expect(res.status).toBe(200);
+        expect(res.body.data.users).toHaveLength(1);
+    });
+});
 
 describe('User Routes - Integration', () => {
     let admin, ngoUser, investigator;

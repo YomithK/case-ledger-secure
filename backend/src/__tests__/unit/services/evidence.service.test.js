@@ -91,6 +91,34 @@ describe('evidence service', () => {
             expect(result).toBeDefined();
             expect(evidenceRepository.create).toHaveBeenCalledTimes(1);
         });
+
+        it('should not put a non-PUBLIC evidence URL on the progress timeline', async () => {
+            caseRepository.findById.mockResolvedValue(mockCase);
+            evidenceRepository.create.mockResolvedValue({ _id: evidenceId });
+            caseProgressRepository.create.mockResolvedValue({ _id: progressId });
+            evidenceRepository.updateById.mockResolvedValue({});
+            evidenceRepository.findById.mockResolvedValue(mockEvidence);
+
+            await evidenceService.uploadEvidence(
+                caseId, mockFile, { accessLevel: 'CONFIDENTIAL' },
+                { userId: investigatorId, role: 'INVESTIGATOR' }
+            );
+            expect(caseProgressRepository.create.mock.calls[0][0].files).toEqual([]);
+        });
+
+        it('should put a PUBLIC evidence URL on the progress timeline', async () => {
+            caseRepository.findById.mockResolvedValue(mockCase);
+            evidenceRepository.create.mockResolvedValue({ _id: evidenceId });
+            caseProgressRepository.create.mockResolvedValue({ _id: progressId });
+            evidenceRepository.updateById.mockResolvedValue({});
+            evidenceRepository.findById.mockResolvedValue(mockEvidence);
+
+            await evidenceService.uploadEvidence(
+                caseId, mockFile, { accessLevel: 'PUBLIC' },
+                { userId: investigatorId, role: 'INVESTIGATOR' }
+            );
+            expect(caseProgressRepository.create.mock.calls[0][0].files).toEqual([mockFile.path]);
+        });
     });
 
     describe('getEvidenceById', () => {
@@ -104,6 +132,21 @@ describe('evidence service', () => {
             evidenceRepository.findById.mockResolvedValue(mockEvidence);
             const result = await evidenceService.getEvidenceById(evidenceId, { userId: adminId, role: 'ADMIN' });
             expect(result).toBeDefined();
+        });
+
+        it('should return evidence for the assigned INVESTIGATOR', async () => {
+            evidenceRepository.findById.mockResolvedValue(mockEvidence);
+            caseRepository.findById.mockResolvedValue(mockCase);
+            const result = await evidenceService.getEvidenceById(evidenceId, { userId: investigatorId, role: 'INVESTIGATOR' });
+            expect(result).toBeDefined();
+        });
+
+        it('should throw 403 for an unassigned INVESTIGATOR', async () => {
+            const otherInvestigatorId = new mongoose.Types.ObjectId();
+            evidenceRepository.findById.mockResolvedValue({ ...mockEvidence, accessLevel: 'CONFIDENTIAL' });
+            caseRepository.findById.mockResolvedValue(mockCase);
+            await expect(evidenceService.getEvidenceById(evidenceId, { userId: otherInvestigatorId, role: 'INVESTIGATOR' }))
+                .rejects.toMatchObject({ statusCode: 403 });
         });
     });
 

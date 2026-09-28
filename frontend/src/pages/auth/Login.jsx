@@ -14,7 +14,17 @@ export default function Login() {
   const [form, setForm] = useState({ email: '', password: '' })
   const [showPassword, setShowPassword] = useState(false)
   const [loading, setLoading] = useState(false)
-  const [error, setError] = useState('')
+  const [error, setError] = useState(() =>
+    new URLSearchParams(window.location.search).get('error') === 'oauth'
+      ? 'Google sign-in failed. Please try again.'
+      : '',
+  )
+
+  // Full-page redirect: the backend runs the OIDC flow and holds the client secret
+  const handleGoogleLogin = () => {
+    const apiBase = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080/api/v1'
+    window.location.href = `${apiBase}/auth/google`
+  }
 
   const handleChange = (e) => {
     setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }))
@@ -104,6 +114,16 @@ export default function Login() {
                 {loading ? 'Signing in…' : 'Sign in'}
               </Button>
             </form>
+
+            <div className="my-4 flex items-center gap-3 text-xs text-muted-foreground">
+              <div className="h-px flex-1 bg-border" />
+              OR
+              <div className="h-px flex-1 bg-border" />
+            </div>
+
+            <Button type="button" variant="outline" className="w-full" onClick={handleGoogleLogin}>
+              Continue with Google
+            </Button>
 
             <p className="mt-4 text-center text-sm text-muted-foreground">
               Don&apos;t have an account?{' '}

@@ -80,6 +80,15 @@ describe('Case Routes - Integration', () => {
             expect(Array.isArray(res.body.data.cases)).toBe(true);
         });
 
+        it('should treat search=.* as a literal string (no regex enumeration)', async () => {
+            const res = await request(app)
+                .get('/api/v1/cases?search=.%2A')
+                .set(authHeader(admin._id, 'ADMIN', admin.email));
+
+            expect(res.status).toBe(200);
+            expect(res.body.data.cases).toHaveLength(0);
+        });
+
         it('should return only own cases for NGO', async () => {
             const anotherNgo = await createNGOUser({ email: `another_ngo_${Date.now()}@test.com` });
             await createCase(anotherNgo._id);
@@ -182,6 +191,27 @@ describe('Case Routes - Integration', () => {
                 .send({ investigatorId: ngoUser._id });
 
             expect(res.status).toBe(400);
+        });
+
+        it('should return 403 when an NGO assigns on a case it did not report', async () => {
+            const otherNgo = await createNGOUser({ email: 'other_ngo@test.com' });
+            const caseDoc = await createCase(ngoUser._id);
+            const res = await request(app)
+                .put(`/api/v1/cases/${caseDoc._id}/assign`)
+                .set(authHeader(otherNgo._id, 'NGO', otherNgo.email))
+                .send({ investigatorId: investigator._id });
+
+            expect(res.status).toBe(403);
+        });
+
+        it('should return 200 when the reporting NGO assigns an investigator', async () => {
+            const caseDoc = await createCase(ngoUser._id);
+            const res = await request(app)
+                .put(`/api/v1/cases/${caseDoc._id}/assign`)
+                .set(authHeader(ngoUser._id, 'NGO', ngoUser.email))
+                .send({ investigatorId: investigator._id });
+
+            expect(res.status).toBe(200);
         });
     });
 

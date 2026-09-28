@@ -117,6 +117,7 @@ pnpm start
 | `CLOUDINARY_CLOUD_NAME` | ✅       | Cloudinary cloud name                             |
 | `CLOUDINARY_API_KEY`    | ✅       | Cloudinary API key                                |
 | `CLOUDINARY_API_SECRET` | ✅       | Cloudinary API secret                             |
+| `FRONTEND_URL`          | ✅       | Allowed CORS origin(s), comma-separated (default: `http://localhost:5173`) |
 
 ---
 

@@ -9,6 +9,7 @@ const AppLayout = lazy(() => import('@/components/layout/AppLayout'))
 
 const Login = lazy(() => import('@/pages/auth/Login'))
 const Register = lazy(() => import('@/pages/auth/Register'))
+const OAuthCallback = lazy(() => import('@/pages/auth/OAuthCallback'))
 
 const Dashboard = lazy(() => import('@/pages/dashboard/Dashboard'))
 
@@ -58,6 +59,14 @@ const router = createBrowserRouter([
     element: (
       <Suspense fallback={<PageLoader />}>
         <Register />
+      </Suspense>
+    ),
+  },
+  {
+    path: '/oauth/callback',
+    element: (
+      <Suspense fallback={<PageLoader />}>
+        <OAuthCallback />
       </Suspense>
     ),
   },

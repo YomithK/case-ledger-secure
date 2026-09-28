@@ -63,6 +63,11 @@ export const errorHandler = (err, req, res, next) => {
     // Log error for debugging
     logger.error(message, { stack: err.stack, statusCode });
 
+    // Never leak internal error details for server errors outside development
+    if (statusCode >= 500 && server.nodeEnv !== 'development') {
+        message = 'Internal server error';
+    }
+
     if (server.nodeEnv === 'development' && errors !== null) {
         return res.status(statusCode).json({ success: false, message, errors });
     }

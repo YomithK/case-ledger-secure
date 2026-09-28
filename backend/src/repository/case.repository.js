@@ -1,4 +1,5 @@
 import Case from '../models/Case.js';
+import { escapeRegex } from '../utils/regex.utils.js';
 
 /**
  * Create new case
@@ -76,7 +77,7 @@ export const findAll = async (filters = {}, pagination = {}) => {
     }
 
     if (filters.search) {
-        query.title = { $regex: filters.search, $options: 'i' };
+        query.title = { $regex: escapeRegex(filters.search), $options: 'i' };
     }
 
     // Always exclude archived cases unless explicitly requested
@@ -127,7 +128,7 @@ export const countCases = async (filters = {}) => {
     }
 
     if (filters.search) {
-        query.title = { $regex: filters.search, $options: 'i' };
+        query.title = { $regex: escapeRegex(filters.search), $options: 'i' };
     }
 
     if (filters.includeArchived !== true) {

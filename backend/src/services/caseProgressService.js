@@ -1,7 +1,9 @@
 import * as caseProgressRepository from '../repository/caseProgress.repository.js';
 import * as caseRepository from '../repository/case.repository.js';
 import * as userRepository from '../repository/user.repository.js';
+import * as evidenceRepository from '../repository/evidence.repository.js';
 import { sendVictimProgressUpdateEmail } from './email.service.js';
+import { isValidStatusTransition } from './case.service.js';
 
 /**
  * Create a new progress entry for a case
@@ -38,10 +40,21 @@ export const createProgressEntry = async ({ caseId, statusSnapshot, message, fil
         throw error;
     }
 
+    // A status change requested via progress must follow the same lifecycle
+    // state machine as PUT /cases/:id/status
+    const newStatus = statusSnapshot || caseDoc.status; // Use current case status if not provided
+    const statusChanged = newStatus !== caseDoc.status;
+
+    if (statusChanged && !isValidStatusTransition(caseDoc.status, newStatus)) {
+        const error = new Error(`Invalid status transition from ${caseDoc.status} to ${newStatus}`);
+        error.statusCode = 400;
+        throw error;
+    }
+
     // 2. Prepare data
     const progressData = {
         caseId,
-        statusSnapshot: statusSnapshot || caseDoc.status, // Use current case status if not provided
+        statusSnapshot: newStatus,
         message,
         files: files || [],
         updatedBy
@@ -50,8 +63,10 @@ export const createProgressEntry = async ({ caseId, statusSnapshot, message, fil
     // 3. Create Entry
     const newEntry = await caseProgressRepository.create(progressData);
 
-    // 4. Sync case status to the progress snapshot
-    await caseRepository.updateStatus(caseId, progressData.statusSnapshot);
+    // 4. Sync case status to the progress snapshot (only for a validated change)
+    if (statusChanged) {
+        await caseRepository.updateStatus(caseId, newStatus);
+    }
 
     // 5. Notify victim if assigned
     if (caseDoc.victim) {
@@ -75,10 +90,12 @@ export const createProgressEntry = async ({ caseId, statusSnapshot, message, fil
 
 /**
  * Get progress timeline for a case
+ * - NGO / VICTIM never receive file URLs of non-PUBLIC evidence
  * @param {string} caseId - Case ID
+ * @param {string} userRole - Role of the requesting user
  * @returns {Promise<Array>} List of progress entries (newest first)
  */
-export const getCaseProgress = async (caseId) => {
+export const getCaseProgress = async (caseId, userRole) => {
     const caseDoc = await caseRepository.findById(caseId, { activeOnly: true });
     if (!caseDoc) {
         const error = new Error('Case not found');
@@ -86,7 +103,16 @@ export const getCaseProgress = async (caseId) => {
         throw error;
     }
 
-    return await caseProgressRepository.findByCaseId(caseId);
+    const entries = await caseProgressRepository.findByCaseId(caseId);
+
+    if (userRole === 'NGO' || userRole === 'VICTIM') {
+        const restrictedUrls = new Set(await evidenceRepository.findRestrictedFileUrls(caseId));
+        for (const entry of entries) {
+            entry.files = (entry.files || []).filter((url) => !restrictedUrls.has(url));
+        }
+    }
+
+    return entries;
 };
 
 /**
@@ -136,8 +162,11 @@ export const updateProgressEntry = async (entryId, updateData, userId, userRole)
     }
 
     // Perform Update
-    // Prevent updating critical fields like caseId or createdBy if sent
-    const { caseId, updatedBy, createdAt, ...allowedUpdates } = updateData;
+    // Whitelist: only the message is editable. Never pass the raw body to the
+    // update, which would allow MongoDB operators ($set, $unset, ...) or
+    // overwriting caseId / statusSnapshot / files.
+    const allowedUpdates = {};
+    if (typeof updateData.message === 'string') allowedUpdates.message = updateData.message;
 
     return await caseProgressRepository.updateById(entryId, allowedUpdates);
 };

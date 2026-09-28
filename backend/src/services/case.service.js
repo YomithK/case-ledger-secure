@@ -21,7 +21,7 @@ const STATUS_TRANSITIONS = {
  * @param {string} newStatus - New status to transition to
  * @returns {boolean} True if transition is valid
  */
-const isValidStatusTransition = (currentStatus, newStatus) => {
+export const isValidStatusTransition = (currentStatus, newStatus) => {
     const allowedTransitions = STATUS_TRANSITIONS[currentStatus] || [];
     return allowedTransitions.includes(newStatus);
 };
@@ -239,14 +239,15 @@ export const updateCase = async (caseId, updateData, userId, userRole) => {
 /**
  * Assign investigator to case
  * Business Logic:
- * - Only ADMIN can assign
+ * - ADMIN can assign on any case; NGO only on cases it reported
  * - investigatorId must reference a user with role INVESTIGATOR
  * @param {string} caseId - Case ID
  * @param {string} investigatorId - Investigator user ID
+ * @param {string} userId - Requesting user ID
  * @param {string} userRole - User role
  * @returns {Promise<Object>} Updated case
  */
-export const assignInvestigator = async (caseId, investigatorId, userRole) => {
+export const assignInvestigator = async (caseId, investigatorId, userId, userRole) => {
     // Validate: Only ADMIN or NGO can assign
     if (userRole !== 'ADMIN' && userRole !== 'NGO') {
         const error = new Error('Only administrators or NGO users can assign investigators');
@@ -260,6 +261,13 @@ export const assignInvestigator = async (caseId, investigatorId, userRole) => {
     if (!caseDoc) {
         const error = new Error('Case not found');
         error.statusCode = 404;
+        throw error;
+    }
+
+    // NGO can only assign investigators to cases it reported
+    if (userRole === 'NGO' && caseDoc.reportedBy.toString() !== userId.toString()) {
+        const error = new Error('Access forbidden. You can only assign investigators to cases you reported.');
+        error.statusCode = 403;
         throw error;
     }
 

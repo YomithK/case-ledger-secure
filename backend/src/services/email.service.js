@@ -13,6 +13,20 @@ const createTransporter = () => {
     });
 };
 
+/**
+ * HTML-encode a value before interpolating it into an email template, so
+ * user-controlled data (names, case titles, progress messages) renders as text.
+ * @param {*} value
+ * @returns {string}
+ */
+export const escapeHtml = (value) =>
+    String(value ?? '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+
 const BASE_STYLES = `
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
   font-size: 14px;
@@ -116,22 +130,22 @@ export const sendInvestigatorAssignmentEmail = async ({ investigatorEmail, inves
         bodyHtml: `
           <h2 style="margin:0 0 16px;font-size:22px;font-weight:700;">You have been assigned a case</h2>
           <p style="margin:0 0 24px;color:#444;line-height:1.6;">
-            Hi <strong>${investigatorName}</strong>, you have been assigned as the lead investigator for the following case.
+            Hi <strong>${escapeHtml(investigatorName)}</strong>, you have been assigned as the lead investigator for the following case.
           </p>
           <table width="100%" cellpadding="0" cellspacing="0" style="background:#f9f9f9;border-radius:6px;padding:20px;margin-bottom:24px;">
             <tr>
               <td>
                 <p style="margin:0 0 8px;font-size:12px;color:#888;text-transform:uppercase;letter-spacing:0.5px;">Case Number</p>
-                <p style="margin:0 0 16px;font-size:16px;font-weight:600;color:#0f0f0f;">${caseNumber}</p>
+                <p style="margin:0 0 16px;font-size:16px;font-weight:600;color:#0f0f0f;">${escapeHtml(caseNumber)}</p>
                 <p style="margin:0 0 8px;font-size:12px;color:#888;text-transform:uppercase;letter-spacing:0.5px;">Case Title</p>
-                <p style="margin:0;font-size:15px;color:#1a1a1a;">${caseTitle}</p>
+                <p style="margin:0;font-size:15px;color:#1a1a1a;">${escapeHtml(caseTitle)}</p>
               </td>
             </tr>
           </table>
           <p style="margin:0 0 24px;color:#444;line-height:1.6;">
             Please log in to the platform to review the case details and begin your investigation.
           </p>
-          <a href="${process.env.FRONTEND_URL || 'http://localhost:5173'}/cases/${caseId}"
+          <a href="${process.env.FRONTEND_URL || 'http://localhost:5173'}/cases/${encodeURIComponent(caseId)}"
              style="display:inline-block;background:#0f0f0f;color:#ffffff;padding:12px 24px;border-radius:6px;text-decoration:none;font-weight:600;font-size:14px;">
             View Case
           </a>
@@ -154,21 +168,21 @@ export const sendVictimProgressUpdateEmail = async ({ victimEmail, victimName, c
         bodyHtml: `
           <h2 style="margin:0 0 16px;font-size:22px;font-weight:700;">Update on your case</h2>
           <p style="margin:0 0 24px;color:#444;line-height:1.6;">
-            Hi <strong>${victimName}</strong>, there has been a progress update on the case you are associated with.
+            Hi <strong>${escapeHtml(victimName)}</strong>, there has been a progress update on the case you are associated with.
           </p>
           <table width="100%" cellpadding="0" cellspacing="0" style="background:#f9f9f9;border-radius:6px;padding:20px;margin-bottom:24px;">
             <tr>
               <td>
                 <p style="margin:0 0 8px;font-size:12px;color:#888;text-transform:uppercase;letter-spacing:0.5px;">Case</p>
-                <p style="margin:0 0 16px;font-size:15px;font-weight:600;color:#0f0f0f;">${caseNumber} — ${caseTitle}</p>
+                <p style="margin:0 0 16px;font-size:15px;font-weight:600;color:#0f0f0f;">${escapeHtml(caseNumber)} — ${escapeHtml(caseTitle)}</p>
                 <p style="margin:0 0 8px;font-size:12px;color:#888;text-transform:uppercase;letter-spacing:0.5px;">Status</p>
-                <p style="margin:0 0 16px;font-size:14px;color:#1a1a1a;">${newStatus.replace(/_/g, ' ')}</p>
+                <p style="margin:0 0 16px;font-size:14px;color:#1a1a1a;">${escapeHtml(newStatus.replace(/_/g, ' '))}</p>
                 <p style="margin:0 0 8px;font-size:12px;color:#888;text-transform:uppercase;letter-spacing:0.5px;">Update</p>
-                <p style="margin:0;font-size:14px;color:#1a1a1a;line-height:1.5;">${progressMessage}</p>
+                <p style="margin:0;font-size:14px;color:#1a1a1a;line-height:1.5;">${escapeHtml(progressMessage)}</p>
               </td>
             </tr>
           </table>
-          <a href="${process.env.FRONTEND_URL || 'http://localhost:5173'}/cases/${caseId}"
+          <a href="${process.env.FRONTEND_URL || 'http://localhost:5173'}/cases/${encodeURIComponent(caseId)}"
              style="display:inline-block;background:#0f0f0f;color:#ffffff;padding:12px 24px;border-radius:6px;text-decoration:none;font-weight:600;font-size:14px;">
             View Case Details
           </a>
@@ -191,22 +205,22 @@ export const sendVictimAssignmentEmail = async ({ victimEmail, victimName, caseT
         bodyHtml: `
           <h2 style="margin:0 0 16px;font-size:22px;font-weight:700;">You have been assigned to a case</h2>
           <p style="margin:0 0 24px;color:#444;line-height:1.6;">
-            Hi <strong>${victimName}</strong>, you have been associated with the following case on the Case Ledger platform.
+            Hi <strong>${escapeHtml(victimName)}</strong>, you have been associated with the following case on the Case Ledger platform.
           </p>
           <table width="100%" cellpadding="0" cellspacing="0" style="background:#f9f9f9;border-radius:6px;padding:20px;margin-bottom:24px;">
             <tr>
               <td>
                 <p style="margin:0 0 8px;font-size:12px;color:#888;text-transform:uppercase;letter-spacing:0.5px;">Case Number</p>
-                <p style="margin:0 0 16px;font-size:16px;font-weight:600;color:#0f0f0f;">${caseNumber}</p>
+                <p style="margin:0 0 16px;font-size:16px;font-weight:600;color:#0f0f0f;">${escapeHtml(caseNumber)}</p>
                 <p style="margin:0 0 8px;font-size:12px;color:#888;text-transform:uppercase;letter-spacing:0.5px;">Case Title</p>
-                <p style="margin:0;font-size:15px;color:#1a1a1a;">${caseTitle}</p>
+                <p style="margin:0;font-size:15px;color:#1a1a1a;">${escapeHtml(caseTitle)}</p>
               </td>
             </tr>
           </table>
           <p style="margin:0 0 24px;color:#444;line-height:1.6;">
             Please log in to the platform to view case details and any updates from the investigation team.
           </p>
-          <a href="${process.env.FRONTEND_URL || 'http://localhost:5173'}/cases/${caseId}"
+          <a href="${process.env.FRONTEND_URL || 'http://localhost:5173'}/cases/${encodeURIComponent(caseId)}"
              style="display:inline-block;background:#0f0f0f;color:#ffffff;padding:12px 24px;border-radius:6px;text-decoration:none;font-weight:600;font-size:14px;">
             View Case
           </a>
@@ -231,15 +245,15 @@ export const sendVictimInvitationEmail = async ({ email, caseTitle, caseNumber, 
         bodyHtml: `
           <h2 style="margin:0 0 16px;font-size:22px;font-weight:700;">You have been invited to Case Ledger</h2>
           <p style="margin:0 0 24px;color:#444;line-height:1.6;">
-            <strong>${inviterName}</strong> has requested your involvement in a human rights case being managed through the Case Ledger platform.
+            <strong>${escapeHtml(inviterName)}</strong> has requested your involvement in a human rights case being managed through the Case Ledger platform.
           </p>
           <table width="100%" cellpadding="0" cellspacing="0" style="background:#f9f9f9;border-radius:6px;padding:20px;margin-bottom:24px;">
             <tr>
               <td>
                 <p style="margin:0 0 8px;font-size:12px;color:#888;text-transform:uppercase;letter-spacing:0.5px;">Case Number</p>
-                <p style="margin:0 0 16px;font-size:16px;font-weight:600;color:#0f0f0f;">${caseNumber}</p>
+                <p style="margin:0 0 16px;font-size:16px;font-weight:600;color:#0f0f0f;">${escapeHtml(caseNumber)}</p>
                 <p style="margin:0 0 8px;font-size:12px;color:#888;text-transform:uppercase;letter-spacing:0.5px;">Case Title</p>
-                <p style="margin:0;font-size:15px;color:#1a1a1a;">${caseTitle}</p>
+                <p style="margin:0;font-size:15px;color:#1a1a1a;">${escapeHtml(caseTitle)}</p>
               </td>
             </tr>
           </table>

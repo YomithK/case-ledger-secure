@@ -438,10 +438,18 @@ const buildCaseFilter = (rawFilters = {}, userId, role) => {
     return match;
 };
 
-const escapeCsvField = (val) => {
+// Leading characters that make spreadsheet apps treat a cell as a formula
+const CSV_FORMULA_PREFIX = /^[=+\-@\t\r]/;
+
+export const escapeCsvField = (val) => {
     if (val === null || val === undefined) return '';
-    const str = String(val).replace(/"/g, '""');
-    return str.includes(',') || str.includes('"') || str.includes('\n') ? `"${str}"` : str;
+    let str = String(val);
+    // Neutralise formula injection in text cells by prefixing a single quote
+    if (typeof val === 'string' && CSV_FORMULA_PREFIX.test(str)) {
+        str = `'${str}`;
+    }
+    str = str.replace(/"/g, '""');
+    return str.includes(',') || str.includes('"') || str.includes('\n') || str.includes('\r') ? `"${str}"` : str;
 };
 
 export const downloadCasesCsv = async (rawFilters, userId, role) => {
