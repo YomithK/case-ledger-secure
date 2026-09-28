@@ -179,6 +179,21 @@ describe('caseProgress service', () => {
             const result = await caseProgressService.updateProgressEntry(entryId, { message: 'Updated' }, adminId, 'ADMIN');
             expect(result).toBeDefined();
         });
+
+        it('should only pass the message field to the update (drops operators and extra fields)', async () => {
+            caseProgressRepository.findById.mockResolvedValue(mockEntry);
+            caseProgressRepository.updateById.mockResolvedValue(mockEntry);
+            const otherCaseId = new mongoose.Types.ObjectId();
+
+            await caseProgressService.updateProgressEntry(entryId, {
+                message: 'Updated',
+                $set: { caseId: otherCaseId },
+                statusSnapshot: 'CLOSED',
+                files: ['https://evil.example/x.jpg'],
+            }, adminId, 'ADMIN');
+
+            expect(caseProgressRepository.updateById).toHaveBeenCalledWith(entryId, { message: 'Updated' });
+        });
     });
 
     describe('deleteProgressEntry', () => {

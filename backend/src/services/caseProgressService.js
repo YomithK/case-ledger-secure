@@ -162,8 +162,11 @@ export const updateProgressEntry = async (entryId, updateData, userId, userRole)
     }
 
     // Perform Update
-    // Prevent updating critical fields like caseId or createdBy if sent
-    const { caseId, updatedBy, createdAt, ...allowedUpdates } = updateData;
+    // Whitelist: only the message is editable. Never pass the raw body to the
+    // update, which would allow MongoDB operators ($set, $unset, ...) or
+    // overwriting caseId / statusSnapshot / files.
+    const allowedUpdates = {};
+    if (typeof updateData.message === 'string') allowedUpdates.message = updateData.message;
 
     return await caseProgressRepository.updateById(entryId, allowedUpdates);
 };
